@@ -94,7 +94,7 @@ Built-in middleware includes:
 ## Planned Features
 - Full Featured async support with Tokio
 - More builtin middlewares
-
+- Ctrl-C Gracefull Shutdown
 ---
 ## Contributing
 
