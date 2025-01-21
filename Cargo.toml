@@ -2,11 +2,10 @@
 name = "feather"
 version = "0.1.0"
 edition = "2021"
-
-description = "Feather: A minimal HTTP framework for Rust with sync & async support"
+repository = "https://github.com/BersisSe/feather"
+description = "Feather: A minimal HTTP framework for Rust "
 authors = ["Bersis Sevimli"]
 license = "MIT"
-
 
 [dependencies]
 colored = "3.0.0"
@@ -25,7 +24,6 @@ hyper = { version = "1.5.2", features = ["http1","http2","server"]}
 tokio = { version = "1.43.0", features = ["full"]}
 serde_json = {version = "1.0.135"}
 serde = { version = "1.0.217", features = ["derive"]}
-
 
 [lib]
 name = "feather"
