@@ -13,7 +13,7 @@ pub type Middleware = Arc<
 >;
 
 #[derive(Clone)]
-pub struct CloneableFn(Arc<dyn for<'a> Fn(&mut tiny_http::Request) -> Response + Send + Sync>);
+struct CloneableFn(Arc<dyn for<'a> Fn(&mut tiny_http::Request) -> Response + Send + Sync>);
 
 impl CloneableFn {
     pub fn new<F>(f: F) -> Self

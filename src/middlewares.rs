@@ -14,7 +14,7 @@ impl Middlewares {
     pub(crate) fn into_middleware(self) -> Middleware {
         match self {
             Middlewares::Logger => Arc::new(|req, next| {
-                println!("{} {} - {:?}", req.method(), req.url(), req.remote_addr());
+                println!("{} {} - {:?}", req.method(), req.url(), req.remote_addr().unwrap());
                 next(req)
             }),
             Middlewares::ParseJson => Arc::new(|req, next| {
