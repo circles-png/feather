@@ -1,16 +1,12 @@
+use crate::middlewares::Middleware;
 use crate::types::Response;
-use crate::middlewares::Middlewares;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 use threadpool::ThreadPool;
 use tiny_http::{Request, Server};
 
-
-
 pub type Next = Arc<dyn Fn(&mut Request) -> Response + Send + Sync>;
-pub type Middleware = Arc<
-    dyn Fn(&mut Request, Arc<dyn Fn(&mut Request) -> Response + Send + Sync>) -> Response + Send + Sync,
->;
+
 
 #[derive(Clone)]
 struct CloneableFn(Arc<dyn for<'a> Fn(&mut tiny_http::Request) -> Response + Send + Sync>);
@@ -28,25 +24,36 @@ impl CloneableFn {
     }
 }
 
+/// Configuration settings for the application.
+///
+/// This struct is used to configure various aspects of the application,
+/// such as the number of threads to be used in the thread pool.
+///
+/// # Fields
+///
+/// * `threads` - The number of threads to be used by the application's thread pool.
+#[derive(Debug, Clone)]
+pub struct AppConfig {
+    pub threads: usize,
+}
+
 pub struct App {
+    config: AppConfig,
     routes: Arc<RwLock<HashMap<(String, String), CloneableFn>>>,
-    middlewares: Arc<Mutex<Vec<Middleware>>>,
+    middlewares: Arc<Mutex<Vec<Box<dyn Middleware>>>>,
 }
 
 impl App {
-    pub fn new() -> Self {
+    pub fn new(config: AppConfig) -> Self {
         Self {
+            config,
             routes: Arc::new(RwLock::new(HashMap::new())),
             middlewares: Arc::new(Mutex::new(Vec::new())),
         }
     }
     #[inline]
-    pub fn use_middleware(&mut self, middleware: Middleware) {
-        self.middlewares.lock().unwrap().push(middleware);
-    }
-    #[inline]
-    pub fn use_builtin(&mut self, middleware: Middlewares) {
-        self.use_middleware(middleware.into_middleware());
+    pub fn use_middleware<MD: Middleware + 'static>(&mut self, middleware: MD ) {
+        self.middlewares.lock().unwrap().push(Box::new(middleware));
     }
     #[inline]
     pub fn route<H>(&mut self, medhod: &str, path: &str, handler: H)
@@ -91,7 +98,7 @@ impl App {
     pub fn listen(&self, address: &str) {
         let server = Arc::new(Server::http(address).expect("Failed to start server"));
         println!("Listening on http://{}", address);
-        let pool = ThreadPool::new(5);
+        let pool = ThreadPool::new(self.config.threads);    
 
         for mut rq in server.incoming_requests() {
             let path = rq.url().to_string();
@@ -112,7 +119,7 @@ impl App {
                     if let Some(handler) = &handler {
                         handler.call(req)
                     } else {
-                        Response::new(404, "Not Found")
+                        Response::ok("404 Not Found")
                     }
                 });
 
@@ -127,7 +134,7 @@ impl App {
                     let current_next = next.clone();
 
                     next = Arc::new(move |req: &mut Request| -> Response {
-                        current_middleware(req, current_next.clone())
+                        current_middleware.handle(req, current_next.clone())
                     });
                 }
 

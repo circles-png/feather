@@ -18,7 +18,7 @@ To get started with Feather, add it as a dependency in your `Cargo.toml`:
 
 ```toml
 [dependencies]
-feather = "0.0.1"
+feather = "0.1.1"
 ```
 
 ## Quick Start
@@ -26,30 +26,28 @@ feather = "0.0.1"
 Here's an example of building a simple web server with Feather:
 
 ```rust
-use feather::types::Response;
-use feather::sync::App;
-
+//*Import Dependencies from Feather
+use feather::{App, AppConfig};
+use feather::Response;
+use feather::middlewares::Logger;
+//*Main Function No Async Here
 fn main() {
-    let mut app = App::new();
+    //*Create instance of AppConfig with 4 threads
+    let config = AppConfig { threads: 4 };
 
-    // Add a GET route
-    app.get("/", |req| {
-        Response::ok("Welcome to Feather!")
-    });
+    //*Create a new instance of App
+    let mut app = App::new(config);
 
-    // Add a POST route
-    app.post("/data", |req| {
-        let mut body = String::new();
-        if let Ok(res) = req.as_reader().read_to_string(&mut body){
-            Response::ok(format!("Received Body: {}", res))
-        }else {
-            Response::new(400, "Bad Request")
-        }
-    });
-
-    // Listen on localhost:8080
-    app.listen("127.0.0.1:8080");
+    //*Define a route for the root path
+    app.get("/", |_req| {
+        Response::ok("Hello From Feather")
+    });    
+    //*Use the Logger middleware
+    app.use_middleware(Logger);
+    //*Listen on port 3000
+    app.listen("127.0.0.1:3000");
 }
+
 ```
 
 ---
@@ -59,43 +57,47 @@ fn main() {
 Feather supports middleware for pre-processing requests and post-processing responses. Here's an example:
 
 ```rust
-use feather::sync::App;
-
+//*Import Dependencies from Feather
+use feather::{App, AppConfig};
+use feather::Response;
+use feather::middlewares::Logger;
+//*Main Function No Async Here
 fn main() {
-    let mut app = App::new();
+    //*Create instance of AppConfig with 4 threads
+    let config = AppConfig { threads: 4 };
 
-    // Add a logging middleware
-    app.use_middleware(Middleware::new(|req, next| {
-        println!("Incoming request: {} {}", req.method(), req.url());
-        next(req)
-    }));
+    //*Create a new instance of App
+    let mut app = App::new(config);
 
-    app.get("/", |req| Response::ok("Hello, Feather!"));
-
-    app.listen("127.0.0.1:8080");
+    //*Define a route for the root path
+    app.get("/", |_req| {
+        Response::ok("Hello From Feather")
+    });    
+    //*Use the Logger middleware
+    app.use_middleware(Logger);
+    //*Listen on port 3000
+    app.listen("127.0.0.1:3000");
 }
 ```
 
-Built-in middleware includes:
-- `logger`: Logs incoming Requests
-- `parse_json`: Parses incoming JSON requests.
-- `serve_static`(WIP): Serves static files from a specified directory.
+Built-in middlewares includes:
+- `Logger`: Logs incoming Requests.
+- `Cors`: Add Cross-Origin Resource Sharing Headers to your Response.
+
 
 ---
 ## Goals
-- Be the simplest Web Framework for Rust
-- Support Sync and Async Programing Paradigms
+- Be the Simple & Beginner-Friendly Web Framework for Rust
+- Be Modular and Expandable By Design
+- Be Easy to Use and Learn
 
 ## Non-Goals
 - Be the most powerful/performant Web Framework
 - Use Complex and Low-level features
+- Be the most feature-rich Web Framework
 
 ---
-## Planned Features
-- Full Featured async support with Tokio
-- More builtin middlewares
-- Ctrl-C Gracefull Shutdown
----
+
 ## Contributing
 
 Contributions are welcome! If you have ideas for improving Feather or find a bug, feel free to open an issue or submit a pull request.

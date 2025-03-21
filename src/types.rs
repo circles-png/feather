@@ -1,7 +1,5 @@
 use std::{collections::HashMap, fs::File, io::Cursor};
 
-
-
 pub struct Response {
     status_code: u16,
     body: Option<String>,
