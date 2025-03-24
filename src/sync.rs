@@ -90,6 +90,7 @@ impl App {
     );
 
     /// Start the application and listen for incoming requests on the given address.
+    /// Blocks the current thread until the server is stopped.
     ///
     /// # Panics
     ///
@@ -97,7 +98,7 @@ impl App {
     /// or middleware are poisoned.
     pub fn listen(&self, address: impl ToSocketAddrs + Display) {
         let server = Arc::new(Server::http(&address).expect("Failed to start server"));
-        eprintln!("Listening on http://{address}");
+        eprintln!("Feather listening on http://{address}");
         let pool = ThreadPool::new(self.config.threads);
 
         for mut request in server.incoming_requests() {

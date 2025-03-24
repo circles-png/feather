@@ -2,7 +2,8 @@ use crate::response::Response;
 use dyn_clone::DynClone;
 use tiny_http::Request;
 
-/// Common trait for all middleware types.
+/// Common trait for all middleware types. Implemented automatically for functions fitting
+/// the `(request, response) -> result` signature.
 pub trait Middleware: Send + Sync + DynClone {
     /// Handle an incoming request by transforming it into a response.
     fn handle(&self, request: &mut Request, response: &mut Response) -> MiddlewareResult;

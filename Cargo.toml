@@ -37,7 +37,7 @@ json = ["dep:serde","dep:serde_json"]
 
 [[example]]
 name = "app"
-path = "examples/feather_app.rs"
+path = "examples/app.rs"
 
 [[example]]
 name = "middleware"
