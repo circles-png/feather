@@ -1,14 +1,12 @@
 use crate::middleware::Middleware;
-use crate::response::Response;
 use std::{
-    collections::HashMap,
     fmt::Display,
-    io::{self, Read},
+    io::empty,
     net::ToSocketAddrs,
     sync::{Arc, RwLock},
 };
 use threadpool::ThreadPool;
-use tiny_http::{Header, Method, Request, Server};
+use tiny_http::{Method, Request, Response, ResponseBox, Server, StatusCode};
 
 /// Configuration settings for the application.
 ///
@@ -95,8 +93,14 @@ impl App {
         request: &mut Request,
         routes: &[Route],
         middleware: &[Box<dyn Middleware>],
-    ) -> Response {
-        let mut response = Response::default();
+    ) -> ResponseBox {
+        let mut response = Response::new(
+            StatusCode(200),
+            Vec::new(),
+            Box::new(empty()) as _,
+            None,
+            None,
+        );
         for middleware in middleware {
             middleware.handle(request, &mut response);
         }
@@ -130,50 +134,13 @@ impl App {
             let routes = Arc::clone(&self.routes);
             let middleware = Arc::clone(&self.middleware);
             pool.execute(move || {
-                fn respond<R: Read>(
-                    response: tiny_http::Response<R>,
-                    request: Request,
-                    headers: HashMap<String, String>,
-                    status_code: u16,
-                ) -> io::Result<()> {
-                    request.respond(headers.into_iter().fold(
-                        response.with_status_code(status_code),
-                        |response, (key, value)| {
-                            response.with_header(
-                                Header::from_bytes(key.as_bytes(), value.as_bytes()).unwrap(),
-                            )
-                        },
-                    ))
-                }
-                let Response {
-                    status_code,
-                    body,
-                    file,
-                    headers,
-                } = Self::run_middleware(
+                let response = Self::run_middleware(
                     &mut request,
                     &routes.read().unwrap(),
                     &middleware.read().unwrap(),
                 );
-                let result = if let Some(file) = file {
-                    respond(
-                        tiny_http::Response::from_file(file),
-                        request,
-                        headers,
-                        status_code,
-                    )
-                } else if let Some(body) = body {
-                    respond(
-                        tiny_http::Response::from_string(body),
-                        request,
-                        headers,
-                        status_code,
-                    )
-                } else {
-                    Ok(())
-                };
-                if let Err(e) = result {
-                    eprintln!("Response failed to send: {e}");
+                if let Err(error) = request.respond(response) {
+                    eprintln!("Failed to respond to request: {error}");
                 }
             });
 

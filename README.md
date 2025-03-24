@@ -45,9 +45,8 @@ Here's an example of building a simple web server with Feather:
 
 ```rust,no_run
 // Import dependencies from Feather
-use feather::Response;
 use feather::middleware::{Logger, MiddlewareResult};
-use feather::{App, AppConfig};
+use feather::{App, AppConfig, Response};
 
 // Main function - no async here!
 // Create instance of AppConfig with 4 threads
@@ -58,7 +57,7 @@ let mut app = App::new(config);
 
 // Define a route for the root path
 app.get("/", |_request: &mut _, response: &mut _| {
-    *response = Response::ok("Hello from Feather!");
+    *response = Response::from_string("Hello from Feather!").boxed();
     MiddlewareResult::Next
 });
 // Use the Logger middleware for all routes
@@ -75,8 +74,7 @@ Feather supports middleware for pre-processing requests and post-processing resp
 
 ```rust,no_run
 // Import dependencies from Feather
-use feather::Response;
-use feather::{App, AppConfig, Request};
+use feather::{App, AppConfig, Request, Response, ResponseBox};
 // Import the Middleware trait and some common middleware primitives
 use feather::middleware::{Logger, Middleware, MiddlewareResult};
 
@@ -87,7 +85,7 @@ struct Custom;
 // The Middleware trait defines a single method `handle`,
 // which can mutate the request and response objects, then return a `MiddlewareResult`.
 impl Middleware for Custom {
-    fn handle(&self, request: &mut Request, _response: &mut Response) -> MiddlewareResult {
+    fn handle(&self, request: &mut Request, _response: &mut ResponseBox) -> MiddlewareResult {
         // Do stuff here
         println!("Now running some custom middleware (struct Custom)!");
         println!("And there's a request with path: {:?}", request.url());
@@ -107,14 +105,14 @@ app.use_middleware(Logger);
 app.use_middleware(Custom);
 
 // Use another middleware defined by a function for all routes
-app.use_middleware(|_request: &mut Request, _response: &mut Response| {
+app.use_middleware(|_request: &mut _, _response: &mut _| {
     println!("Now running some custom middleware (closure)!");
     MiddlewareResult::Next
 });
 
 // Define a route
 app.get("/", |_request: &mut _, response: &mut _| {
-    *response = Response::ok("Hello from Feather!");
+    *response = Response::from_string("Hello from Feather!").boxed();
     MiddlewareResult::Next
 });
 

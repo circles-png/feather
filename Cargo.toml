@@ -12,6 +12,7 @@ categories = ["web-programming","network-programming"]
 
 
 [dependencies]
+ascii = "1.1.0"
 colored = "3.0.0"
 ctrlc = "3.4.5"
 dyn-clone = "1.0.19"

@@ -10,7 +10,7 @@ fn test_app() {
     let mut app = App::new(config);
 
     app.get("/", |_request: &mut _, response: &mut _| {
-        *response = Response::ok("Hello from Feather!");
+        *response = Response::from_string("Hello from Feather!").boxed();
         MiddlewareResult::Next
     });
     thread::spawn(move || {
