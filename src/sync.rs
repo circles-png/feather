@@ -1,12 +1,14 @@
 use crate::middleware::Middleware;
 use crate::response::Response;
 use std::{
+    collections::HashMap,
     fmt::Display,
+    io::{self, Read},
     net::ToSocketAddrs,
     sync::{Arc, RwLock},
 };
 use threadpool::ThreadPool;
-use tiny_http::{Header, Method, Server};
+use tiny_http::{Header, Method, Request, Server};
 
 /// Configuration settings for the application.
 ///
@@ -89,6 +91,29 @@ impl App {
         Options options
     );
 
+    fn run_middleware(
+        request: &mut Request,
+        routes: &[Route],
+        middleware: &[Box<dyn Middleware>],
+    ) -> Response {
+        let mut response = Response::default();
+        for middleware in middleware {
+            middleware.handle(request, &mut response);
+        }
+        for Route {
+            method,
+            path,
+            middleware,
+        } in routes
+        {
+            if method != request.method() || *path != request.url() {
+                continue;
+            }
+            middleware.handle(request, &mut response);
+        }
+        response
+    }
+
     /// Start the application and listen for incoming requests on the given address.
     /// Blocks the current thread until the server is stopped.
     ///
@@ -105,44 +130,47 @@ impl App {
             let routes = Arc::clone(&self.routes);
             let middleware = Arc::clone(&self.middleware);
             pool.execute(move || {
-                let mut response = Response::default();
-                for middleware in &*middleware.read().unwrap() {
-                    middleware.handle(&mut request, &mut response);
-                }
-                for Route {
-                    method,
-                    path,
-                    middleware,
-                } in &*routes.read().unwrap()
-                {
-                    if method != request.method() || *path != request.url() {
-                        continue;
-                    }
-                    middleware.handle(&mut request, &mut response);
-                }
-                let result = if let Some(file) = response.file {
-                    request.respond(response.headers.into_iter().fold(
-                        tiny_http::Response::from_file(file).with_status_code(response.status_code),
+                fn respond<R: Read>(
+                    response: tiny_http::Response<R>,
+                    request: Request,
+                    headers: HashMap<String, String>,
+                    status_code: u16,
+                ) -> io::Result<()> {
+                    request.respond(headers.into_iter().fold(
+                        response.with_status_code(status_code),
                         |response, (key, value)| {
                             response.with_header(
                                 Header::from_bytes(key.as_bytes(), value.as_bytes()).unwrap(),
                             )
                         },
                     ))
-                } else if let Some(body) = response.body {
-                    request.respond(
-                        response.headers.into_iter().fold(
-                            tiny_http::Response::from_string(body)
-                                .with_status_code(response.status_code),
-                            |response, (key, value)| {
-                                response.with_header(
-                                    Header::from_bytes(key.as_bytes(), value.as_bytes()).unwrap(),
-                                )
-                            },
-                        ),
+                }
+                let Response {
+                    status_code,
+                    body,
+                    file,
+                    headers,
+                } = Self::run_middleware(
+                    &mut request,
+                    &routes.read().unwrap(),
+                    &middleware.read().unwrap(),
+                );
+                let result = if let Some(file) = file {
+                    respond(
+                        tiny_http::Response::from_file(file),
+                        request,
+                        headers,
+                        status_code,
+                    )
+                } else if let Some(body) = body {
+                    respond(
+                        tiny_http::Response::from_string(body),
+                        request,
+                        headers,
+                        status_code,
                     )
                 } else {
-                    return;
+                    Ok(())
                 };
                 if let Err(e) = result {
                     eprintln!("Response failed to send: {e}");
