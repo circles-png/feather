@@ -13,7 +13,7 @@ struct Custom;
 impl Middleware for Custom {
     fn handle(&self, request: &mut Request, _response: &mut Response) -> MiddlewareResult {
         // Do stuff here
-        println!("Now running some custom middleware!");
+        println!("Now running some custom middleware (struct Custom)!");
         println!("And there's a request with path: {:?}", request.url());
         // and then continue to the next middleware in the chain
         MiddlewareResult::Next
@@ -30,6 +30,12 @@ fn main() {
 
     // Use the Custom middleware for all routes
     app.use_middleware(Custom);
+
+    // Use another middleware defined by a function for all routes
+    app.use_middleware(|_request: &mut Request, _response: &mut Response| {
+        println!("Now running some custom middleware (closure)!");
+        MiddlewareResult::Next
+    });
 
     // Define a route
     app.get("/", |_request: &mut _, response: &mut _| {
